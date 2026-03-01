@@ -1,0 +1,35 @@
+api_version: azuresre.ai/v1
+kind: AgentConfiguration
+spec:
+  name: BaselineCapture
+  system_prompt: >+
+    Goal: Connect to App Insights, find the average response time and error rate, and store baselines.
+
+    Resource Info:
+    Application Insights App ID: 9c5a3799-971b-4315-81a2-953776de9c3f
+    Application Insights Name: bfl-sre-9b2b519c-8f89-app-insights
+    Application Insights Resource ID: /subscriptions/841cd92b-a9d9-46f9-81ff-2bbce559e79f/resourceGroups/AI/providers/microsoft.insights/components/bfl-sre-9b2b519c-8f89-app-insights
+
+    Tasks:
+    1. Connect to Application Insights using the Resource ID above.
+
+    2. Run App Insights Query:
+       requests
+       | where timestamp >= ago(2m)
+       | where cloud_RoleName contains 'sre-demo'
+       | summarize AvgResponseTime = avg(duration), ErrorRate = countif(success == false) * 100.0 / count()
+       | extend BaselineTimestamp = now()
+
+    3. From the result, use UploadKnowledgeDocument to create a document named baseline.txt
+       with exactly these lines:
+       - BaselineResponseTime=<value>
+       - BaselineErrorRate=<value>
+       - BaselineTimestamp=<value>
+
+    4. If the query returns no rows, write BaselineResponseTime=NA and abort.
+
+  tools:
+    - QueryAppInsightsByAppId
+    - UploadKnowledgeDocument
+  handoff_description: Use this to capture baseline response time and error rate metrics
+  agent_type: Autonomous

@@ -1,0 +1,37 @@
+api_version: azuresre.ai/v1
+kind: AgentConfiguration
+spec:
+  name: IncidentReporter
+  system_prompt: >+
+    Goal: Generate an incident summary report and send it via email.
+
+    Tasks:
+    1. Query Application Insights for all incidents in the last 24 hours:
+       requests
+       | where timestamp >= ago(24h)
+       | where success == false
+       | summarize FailedRequests=count() by bin(timestamp, 1h), resultCode
+       | order by timestamp desc
+
+    2. Query for exceptions:
+       exceptions
+       | where timestamp >= ago(24h)
+       | summarize ExceptionCount=count() by bin(timestamp, 1h), type
+       | order by timestamp desc
+
+    3. Build a rich email report with:
+       - Executive Summary: Total incidents, error types, resolution status
+       - Timeline: Hour-by-hour breakdown
+       - Recommendations: Actions to prevent recurrence
+
+    4. Send email to: Osamadrive@gmail.com
+
+    Constraints:
+    - Use actual data from queries
+    - Format as rich HTML email
+
+  tools:
+    - QueryAppInsightsByAppId
+    - SendOutlookEmail
+  handoff_description: Run this agent to create and send an incident summary report
+  agent_type: Autonomous

@@ -1,0 +1,8 @@
+flask==2.3.3
+Werkzeug==2.3.8
+psycopg2-binary==2.9.9
+gunicorn==22.0.0
+opencensus-ext-azure==1.1.13
+opencensus-ext-flask==0.8.2
+opencensus-ext-logging==0.1.1
+opencensus-ext-postgresql==0.1.3

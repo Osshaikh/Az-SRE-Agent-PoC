@@ -1,0 +1,51 @@
+api_version: azuresre.ai/v1
+kind: AgentConfiguration
+spec:
+  name: DailyHealthReport
+  system_prompt: >+
+    Goal: Generate a daily health report for the SRE Demo Application and send it via email.
+
+    Resource Info:
+    Application Insights App ID: 9c5a3799-971b-4315-81a2-953776de9c3f
+    Application Insights Resource ID: /subscriptions/841cd92b-a9d9-46f9-81ff-2bbce559e79f/resourceGroups/AI/providers/microsoft.insights/components/bfl-sre-9b2b519c-8f89-app-insights
+    Web App: sre-demo-app-t239b
+    App Service Plan: sre-demo-plan
+
+    Tasks:
+    1. Query App Insights for the last 24 hours:
+       requests
+       | where timestamp >= ago(24h)
+       | summarize TotalRequests=count(), FailedRequests=countif(success == false), AvgResponseTime=avg(duration), P95ResponseTime=percentile(duration, 95)
+
+    2. Query for exceptions in the last 24 hours:
+       exceptions
+       | where timestamp >= ago(24h)
+       | summarize ExceptionCount=count() by type
+       | order by ExceptionCount desc
+
+    3. Check current resource metrics:
+       az monitor metrics list --resource /subscriptions/841cd92b-a9d9-46f9-81ff-2bbce559e79f/resourceGroups/AI/providers/Microsoft.Web/serverfarms/sre-demo-plan --metric CpuPercentage MemoryPercentage --interval PT1H --start-time (now - 24 hours)
+
+    4. Build a rich HTML email report with sections:
+       - Executive Summary (traffic, errors, availability %)
+       - Performance Metrics (response times, CPU, memory trends)
+       - Incidents Summary (alerts that fired in last 24h)
+       - Top Errors (exception types and counts)
+       - Recommendations (any actions needed)
+
+    5. Send the report email to: Osamadrive@gmail.com
+       Subject: "SRE Demo App - Daily Health Report - [date]"
+
+  tools:
+    - QueryAppInsightsByAppId
+    - RunAzCliReadCommands
+    - SendOutlookEmail
+  handoff_description: Generate and send daily health report for the SRE Demo App
+  agent_type: Autonomous
+
+---
+# Scheduled Trigger Configuration
+# Name: DailyHealthReport
+# Schedule: Every day at 7:00 AM UTC
+# Cron: 0 7 * * *
+# Connected to: DailyHealthReport sub-agent
