@@ -19,19 +19,19 @@ spec:
 
     2. Run App Insights Query to check for errors:
     requests
-    | where timestamp >= ago(2m)
+    | where timestamp >= ago(15m)
     | where success == false
     | summarize FailedCount=count(), AvgDuration=avg(duration) by resultCode
     | order by FailedCount desc
 
     3. Run App Insights Query to check for exceptions:
     exceptions
-    | where timestamp >= ago(2m)
+    | where timestamp >= ago(15m)
     | summarize ExceptionCount=count() by type, outerMessage
     | order by ExceptionCount desc
 
     4. Check current resource utilization:
-    az monitor metrics list --resource /subscriptions/841cd92b-a9d9-46f9-81ff-2bbce559e79f/resourceGroups/AI/providers/Microsoft.Web/serverfarms/sre-demo-plan --metric CpuPercentage MemoryPercentage --interval PT1M --start-time (now - 2 minutes)
+    az monitor metrics list --resource /subscriptions/841cd92b-a9d9-46f9-81ff-2bbce559e79f/resourceGroups/AI/providers/Microsoft.Web/serverfarms/sre-demo-plan --metric CpuPercentage MemoryPercentage --interval PT1M --start-time (now - 15 minutes)
 
     5. Analyze findings and determine root cause:
     - If HTTP 500 errors detected: Check exception traces for stack traces

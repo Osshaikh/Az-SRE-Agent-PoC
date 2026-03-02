@@ -15,7 +15,7 @@ spec:
 
     2. Run App Insights Query:
        requests
-       | where timestamp >= ago(2m)
+       | where timestamp >= ago(15m)
        | where cloud_RoleName contains 'sre-demo'
        | summarize AvgResponseTime = avg(duration), ErrorRate = countif(success == false) * 100.0 / count()
        | extend BaselineTimestamp = now()

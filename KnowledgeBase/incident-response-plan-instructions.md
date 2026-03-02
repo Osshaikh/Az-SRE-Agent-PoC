@@ -23,26 +23,26 @@ Run ALL of the following queries to build a complete picture before taking any a
 
 1. **Failed requests** — identify HTTP status codes and affected endpoints:
    ```
-   requests | where timestamp >= ago(2m) | where success == false
+   requests | where timestamp >= ago(15m) | where success == false
    | summarize count() by resultCode, name | order by count_ desc
    ```
 
 2. **Exception traces** — get exact error messages and stack traces:
    ```
-   exceptions | where timestamp >= ago(2m)
+   exceptions | where timestamp >= ago(15m)
    | project timestamp, type, outerMessage, innermostMessage, details
    | order by timestamp desc | take 10
    ```
 
 3. **Dependency failures** — check if downstream services (DB, APIs) are failing:
    ```
-   dependencies | where timestamp >= ago(2m) | where success == false
+   dependencies | where timestamp >= ago(15m) | where success == false
    | summarize count() by type, target, resultCode | order by count_ desc
    ```
 
 4. **Resource metrics** — check CPU and memory on the App Service Plan:
    ```
-   az monitor metrics list --resource /subscriptions/841cd92b-a9d9-46f9-81ff-2bbce559e79f/resourceGroups/AI/providers/Microsoft.Web/serverfarms/sre-demo-plan --metric CpuPercentage MemoryPercentage --interval PT1M --start-time (now - 5 minutes)
+   az monitor metrics list --resource /subscriptions/841cd92b-a9d9-46f9-81ff-2bbce559e79f/resourceGroups/AI/providers/Microsoft.Web/serverfarms/sre-demo-plan --metric CpuPercentage MemoryPercentage --interval PT1M --start-time (now - 15 minutes)
    ```
 
 5. **Recent deployments/config changes**:
@@ -128,4 +128,7 @@ Mark the incident as mitigated.
 - ALWAYS document the exact root cause from observed signals.
 - ALWAYS verify the fix worked before closing.
 - ALWAYS close/mitigate the incident after remediation.
+- If MitigateIncident tool is unavailable or errors, use PostIcmRcaSummary to document the resolution instead.
+- If a tool call fails, continue with available alternatives — do not stop the investigation.
 - Use the knowledge base runbooks for additional context.
+- Query windows should use ago(15m) to ensure telemetry data is captured even with App Insights ingestion delay.
