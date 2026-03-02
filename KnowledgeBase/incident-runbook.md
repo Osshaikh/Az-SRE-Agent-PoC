@@ -18,18 +18,19 @@
 3. Check if the errors correlate with CPU/memory spikes
 4. Check recent deployments or configuration changes
 
-### Remediation Actions (Execute Immediately)
-1. **Restart the web app**:
+### Remediation Actions (in order of preference)
+1. **Analyze exception traces** — get the exact error message and stack trace from App Insights
+2. **Check if transient** — if errors stopped on their own, close as transient incident
+3. **If DB credential errors** ("password authentication failed"):
+   - Verify DB config: `az webapp config appsettings list --name sre-demo-app-t239b --resource-group AI --query "[?name=='DB_USER' || name=='DB_HOST']"`
+   - Verify PostgreSQL is running: `az postgres flexible-server show --name sre-demo-pgdb --resource-group AI --query "{state:state}"`
+   - Report the credential misconfiguration with evidence
+4. **If dependency failure** (DB unreachable, timeout):
+   - Check PostgreSQL health and connectivity
+   - Check network/firewall rules
+5. **LAST RESORT — Restart the web app** (only if all above fail):
    ```
    az webapp restart --name sre-demo-app-t239b --resource-group AI
-   ```
-2. **If errors persist after restart, check DB connectivity**:
-   ```
-   az webapp config appsettings list --name sre-demo-app-t239b --resource-group AI --query "[?name=='DB_HOST' || name=='DB_USER']"
-   ```
-3. **If DB authentication errors found, verify PostgreSQL credentials**:
-   ```
-   az postgres flexible-server show --name sre-demo-pgdb --resource-group AI --query "{state:state, fqdn:fullyQualifiedDomainName}"
    ```
 
 ### Resolution
@@ -49,18 +50,23 @@
 2. Identify which app on the plan is consuming CPU
 3. Check request patterns for sudden traffic spikes
 
-### Remediation Actions (Execute Immediately)
-1. **Scale up the App Service Plan**:
+### Remediation Actions (in order of preference)
+1. **Identify top CPU-consuming endpoints** from App Insights request logs
+2. **If traffic spike** → scale OUT (add instances):
+   ```
+   az appservice plan update --name sre-demo-plan --resource-group AI --number-of-workers 2
+   ```
+3. **If runaway process with low traffic** → scale UP:
    ```
    az appservice plan update --name sre-demo-plan --resource-group AI --sku B3
    ```
-2. **If single app is the culprit, restart it**:
+4. **After issue resolves, scale back**:
+   ```
+   az appservice plan update --name sre-demo-plan --resource-group AI --sku B2 --number-of-workers 1
+   ```
+5. **LAST RESORT — Restart app** (only if CPU doesn't recover after scaling):
    ```
    az webapp restart --name sre-demo-app-t239b --resource-group AI
-   ```
-3. **After issue resolves, scale back down**:
-   ```
-   az appservice plan update --name sre-demo-plan --resource-group AI --sku B2
    ```
 
 ### Resolution
@@ -80,14 +86,16 @@
 2. Check if memory leak pattern exists (continuously increasing)
 3. Correlate with application errors
 
-### Remediation Actions (Execute Immediately)
-1. **Restart the web app to clear memory**:
-   ```
-   az webapp restart --name sre-demo-app-t239b --resource-group AI
-   ```
-2. **If memory remains high, scale up**:
+### Remediation Actions (in order of preference)
+1. **Check if one-time spike or continuous increase** (leak vs burst)
+2. **If spike already declining** → monitor and close as transient
+3. **If continuously increasing** → scale UP the plan:
    ```
    az appservice plan update --name sre-demo-plan --resource-group AI --sku B3
+   ```
+4. **LAST RESORT — Restart app** (only if memory does not recover after scaling):
+   ```
+   az webapp restart --name sre-demo-app-t239b --resource-group AI
    ```
 
 ### Resolution
@@ -107,14 +115,20 @@
 2. Check if CPU or memory is also elevated
 3. Check database query performance
 
-### Remediation Actions (Execute Immediately)
-1. **Restart the web app**:
+### Remediation Actions (in order of preference)
+1. **Identify slowest endpoints** from App Insights request logs
+2. **Check if DB queries are slow** — correlate with dependency call durations
+3. **If PostgreSQL is the bottleneck** → scale up DB:
+   ```
+   az postgres flexible-server update --name sre-demo-pgdb --resource-group AI --sku-name Standard_B2s
+   ```
+4. **If app-side latency** → scale out instances:
+   ```
+   az appservice plan update --name sre-demo-plan --resource-group AI --number-of-workers 2
+   ```
+5. **LAST RESORT — Restart app**:
    ```
    az webapp restart --name sre-demo-app-t239b --resource-group AI
-   ```
-2. **Scale up if under resource pressure**:
-   ```
-   az appservice plan update --name sre-demo-plan --resource-group AI --sku B3
    ```
 
 ### Resolution
@@ -147,14 +161,20 @@
 2. Check web app configuration for DB credentials
 3. Verify PostgreSQL server is accessible
 
-### Remediation Actions (Execute Immediately)
-1. **Restart the web app** (clears any cached broken state):
+### Remediation Actions (in order of preference)
+1. **Analyze exception traces** — identify "password authentication failed" in logs
+2. **Check web app DB config**:
    ```
-   az webapp restart --name sre-demo-app-t239b --resource-group AI
+   az webapp config appsettings list --name sre-demo-app-t239b --resource-group AI --query "[?name=='DB_USER' || name=='DB_HOST']"
    ```
-2. **Verify DB connectivity**:
+3. **Verify PostgreSQL is running**:
    ```
    az postgres flexible-server show --name sre-demo-pgdb --resource-group AI --query "{state:state}"
+   ```
+4. **Report the exact credential error** with evidence from traces
+5. **LAST RESORT — Restart app** (only if error appears to be cached/stale connection):
+   ```
+   az webapp restart --name sre-demo-app-t239b --resource-group AI
    ```
 
 ### Resolution
